@@ -32,6 +32,10 @@ public class EnemyLogic : MonoBehaviour
     public float attackCooldown = 1.5f;
     protected float lastAttackTime = 0f;
 
+    [Header("Health Settings")]
+    public float maxHealth = 100f;
+    private float currentHealth;
+
     protected NavMeshAgent agent;
     protected Transform player;
     protected Vector3 lastKnownPosition;
@@ -40,6 +44,7 @@ public class EnemyLogic : MonoBehaviour
     {
         agent = GetComponent<NavMeshAgent>();
         player = GameObject.FindGameObjectWithTag("Player").transform;
+        currentHealth = maxHealth;
     }
 
     protected virtual void Update()
@@ -63,6 +68,22 @@ public class EnemyLogic : MonoBehaviour
                 AttackPlayer();
                 break;
         }
+    }
+
+    public void TakeDamage(float damage)
+    {
+        currentHealth -= damage;
+        Debug.Log($"{gameObject.name} took {damage}!");
+
+        if(currentHealth <= 0)
+        {
+            Die();
+        }
+    }
+
+    protected virtual void Die()
+    {
+        Destroy(gameObject);
     }
 
     protected virtual void Patrol()
