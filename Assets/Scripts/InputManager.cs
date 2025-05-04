@@ -8,6 +8,8 @@ public class InputManager : MonoBehaviour
     private PlayerInput playerInput;
     public PlayerInput.OnFootActions OnFoot;
 
+    [SerializeField] private WeaponManager weaponManager;
+
     private PlayerMotor motor;
     private PlayerLook look;
 
@@ -37,6 +39,7 @@ public class InputManager : MonoBehaviour
     private void OnEnable()
     {
         OnFoot.Enable();
+        OnFoot.Shoot.performed += ctx => weaponManager.TryShoot();
     }
 
     private void OnDisable()
