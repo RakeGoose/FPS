@@ -7,13 +7,27 @@ public class WeaponManager : MonoBehaviour
 {
     public Weapon[] weapons;
     public TextMeshProUGUI ammoText;
+    public TextMeshProUGUI reloadText;
+    private Animator currentAnimator;
+
+    private bool isMeleeAttacking = false;
 
     private int currentWeaponIndex = 0;
-    private int currentAmmo;
     private float lastFireTime;
+    private bool isReloading = false;
+
+    private float reloadAnimTimer = 0f;
+    private float reloadAnimInterval = 0.5f;
+    private int reloadDotCount = 0;
 
     void Start()
     {
+        foreach(var weapon in weapons)
+        {
+            weapon.currentAmmo = weapon.maxAmmo;
+            weapon.totalAmmo = weapon.maxAmmo * 3;
+        }
+
         EquipWeapon(0);
     }
 
@@ -23,25 +37,39 @@ public class WeaponManager : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Alpha2)) EquipWeapon(1);
         if (Input.GetKeyDown(KeyCode.Alpha3)) EquipWeapon(2);
 
+        UpdateUI();
     }
 
     private Weapon CurrentWeapon() => weapons[currentWeaponIndex];
+    int CurrentAmmo => CurrentWeapon().currentAmmo;
+    int TotalAmmo => CurrentWeapon().totalAmmo;
 
     private void EquipWeapon(int index)
     {
-        foreach (var weapon in weapons)
-            weapon.model.SetActive(false);
+        if (weapons[currentWeaponIndex].model != null)
+            weapons[currentWeaponIndex].model.SetActive(false);
+
         currentWeaponIndex = index;
-        weapons[currentWeaponIndex].model.SetActive(true);
-        currentAmmo = weapons[currentWeaponIndex].maxAmmo;
+        currentAnimator = CurrentWeapon().model.GetComponent<Animator>();
+
+        if (CurrentWeapon().model != null)
+            CurrentWeapon().model.SetActive(true);
+
         UpdateUI();
     }
 
     private void Shoot()
     {
+
+        if (CurrentWeapon().isMelee)
+        {
+            StartCoroutine(MeleeAttack());
+            return;
+        }
+
         var firePoint = CurrentWeapon().firePoint;
 
-        if (currentAmmo <= 0)
+        if (CurrentWeapon().currentAmmo <= 0)
         {
             return;
         }
@@ -61,7 +89,7 @@ public class WeaponManager : MonoBehaviour
             }
         }
 
-        currentAmmo--;
+        CurrentWeapon().currentAmmo--;
         UpdateUI();
     }
 
@@ -69,16 +97,101 @@ public class WeaponManager : MonoBehaviour
     {
         if(ammoText != null)
         {
-            ammoText.text = $"{currentAmmo} / {CurrentWeapon().maxAmmo}";
+            if (CurrentWeapon().isMelee)
+            {
+                ammoText.text = "∞";
+            }
+            else
+            {
+                ammoText.text = $"{CurrentWeapon().currentAmmo} / {CurrentWeapon().totalAmmo}";
+            }
+        }
+
+        if (isReloading)
+        {
+            reloadAnimTimer += Time.deltaTime;
+            if(reloadAnimTimer >= reloadAnimInterval)
+            {
+                reloadDotCount = (reloadDotCount + 1) % 4;
+                string dots = new string('.', reloadDotCount);
+                reloadText.text = $"Reloading{dots}";
+                reloadAnimTimer = 0f;
+            }
+
+            reloadText.gameObject.SetActive(true);
+        }
+        else
+        {
+            reloadText.gameObject.SetActive(false);
+            reloadAnimTimer = 0f;
+            reloadDotCount = 0;
         }
     }
 
     public void TryShoot()
     {
-        if(Time.time >= lastFireTime + CurrentWeapon().fireRate && currentAmmo > 0)
+        if (CurrentWeapon().isMelee)
+        {
+            if (!isMeleeAttacking)
+            {
+                StartCoroutine(MeleeAttack());
+            }
+            return;
+        }
+
+        if(Time.time >= lastFireTime + CurrentWeapon().fireRate && CurrentWeapon().currentAmmo > 0)
         {
             Shoot();
             lastFireTime = Time.time;
         }
+    }
+
+    public void TryReload()
+    {
+        if (isReloading || CurrentWeapon().currentAmmo == CurrentWeapon().maxAmmo || CurrentWeapon().totalAmmo <= 0)
+            return;
+
+        StartCoroutine(Reload());
+    }
+
+    IEnumerator Reload()
+    {
+        isReloading = true;
+        Debug.Log("Reloading...");
+
+        yield return new WaitForSeconds(CurrentWeapon().reloadTime);
+
+        int neededAmmo = CurrentWeapon().maxAmmo - CurrentWeapon().currentAmmo;
+        int ammoToReload = Mathf.Min(neededAmmo, CurrentWeapon().totalAmmo);
+
+        CurrentWeapon().currentAmmo += ammoToReload;
+        CurrentWeapon().totalAmmo -= ammoToReload;
+
+        
+
+        isReloading = false;
+
+        UpdateUI();
+    }
+
+    IEnumerator MeleeAttack()
+    {
+        isMeleeAttacking = true;
+
+        currentAnimator?.Play("KnifeAttack", 0, 0f);
+        yield return new WaitForSeconds(CurrentWeapon().meleeDelay);
+        
+
+        Ray ray = Camera.main.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+        if (Physics.Raycast(ray, out RaycastHit hit, CurrentWeapon().meleeRange))
+        {
+            if(hit.collider.TryGetComponent(out EnemyLogic enemy))
+            {
+                enemy.TakeDamage(CurrentWeapon().damage);
+            }
+        }
+
+        yield return new WaitForSeconds(CurrentWeapon().fireRate);
+        isMeleeAttacking = false;
     }
 }

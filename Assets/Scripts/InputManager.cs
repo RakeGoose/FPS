@@ -9,6 +9,7 @@ public class InputManager : MonoBehaviour
     public PlayerInput.OnFootActions OnFoot;
 
     [SerializeField] private WeaponManager weaponManager;
+    private bool isShooting = false;
 
     private PlayerMotor motor;
     private PlayerLook look;
@@ -39,11 +40,21 @@ public class InputManager : MonoBehaviour
     private void OnEnable()
     {
         OnFoot.Enable();
-        OnFoot.Shoot.performed += ctx => weaponManager.TryShoot();
+        OnFoot.Shoot.started += ctx => isShooting = true;
+        OnFoot.Shoot.canceled += ctx => isShooting = false;
+        OnFoot.Reload.performed += ctx => weaponManager.TryReload();
     }
 
     private void OnDisable()
     {
         OnFoot.Disable();
+    }
+
+    private void Update()
+    {
+        if (isShooting)
+        {
+            weaponManager.TryShoot();
+        }
     }
 }
