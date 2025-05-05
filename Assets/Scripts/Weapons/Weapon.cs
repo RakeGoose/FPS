@@ -16,9 +16,14 @@ public class Weapon
 
     public GameObject muzzleFlashPrefab;
     public GameObject model;
+    public GameObject bloodEffect;
     public Transform firePoint;
 
     public bool isMelee;
     public float meleeRange;
     public float meleeDelay;
+
+    public AudioClip meleeSwingSound;
+    public AudioClip meleeHitSound;
+    public AudioClip shootSound;
 }

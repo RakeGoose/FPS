@@ -43,6 +43,8 @@ public class InputManager : MonoBehaviour
         OnFoot.Shoot.started += ctx => isShooting = true;
         OnFoot.Shoot.canceled += ctx => isShooting = false;
         OnFoot.Reload.performed += ctx => weaponManager.TryReload();
+        OnFoot.Sprint.performed += ctx => motor.SetSprint(true);
+        OnFoot.Sprint.canceled += ctx => motor.SetSprint(false);
     }
 
     private void OnDisable()

@@ -9,6 +9,8 @@ public class WeaponManager : MonoBehaviour
     public TextMeshProUGUI ammoText;
     public TextMeshProUGUI reloadText;
     private Animator currentAnimator;
+    private AudioSource audioSource;
+    [SerializeField] private GameObject defaultImpactEffect;
 
     private bool isMeleeAttacking = false;
 
@@ -26,6 +28,12 @@ public class WeaponManager : MonoBehaviour
         {
             weapon.currentAmmo = weapon.maxAmmo;
             weapon.totalAmmo = weapon.maxAmmo * 3;
+        }
+
+        audioSource = GetComponent<AudioSource>();
+        if(audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
         }
 
         EquipWeapon(0);
@@ -74,6 +82,11 @@ public class WeaponManager : MonoBehaviour
             return;
         }
 
+        if(CurrentWeapon().shootSound != null)
+        {
+            audioSource.PlayOneShot(CurrentWeapon().shootSound);
+        }
+
         if(CurrentWeapon().muzzleFlashPrefab != null)
         {
             var flash = Instantiate(CurrentWeapon().muzzleFlashPrefab, firePoint.position, firePoint.rotation);
@@ -86,8 +99,23 @@ public class WeaponManager : MonoBehaviour
             if(hit.collider.TryGetComponent(out EnemyLogic enemy))
             {
                 enemy.TakeDamage(CurrentWeapon().damage);
+
+                if(CurrentWeapon().bloodEffect != null)
+                {
+                    Instantiate(CurrentWeapon().bloodEffect, hit.point, Quaternion.LookRotation(hit.normal));
+                }
+            }
+            else
+            {
+                if(defaultImpactEffect != null)
+                {
+                    GameObject impact = Instantiate(defaultImpactEffect, hit.point, Quaternion.LookRotation(hit.normal));
+                    Destroy(impact, 2f);
+                }
             }
         }
+
+        
 
         CurrentWeapon().currentAmmo--;
         UpdateUI();
@@ -159,6 +187,8 @@ public class WeaponManager : MonoBehaviour
         isReloading = true;
         Debug.Log("Reloading...");
 
+        currentAnimator?.SetTrigger("Reload");
+
         yield return new WaitForSeconds(CurrentWeapon().reloadTime);
 
         int neededAmmo = CurrentWeapon().maxAmmo - CurrentWeapon().currentAmmo;
@@ -179,6 +209,16 @@ public class WeaponManager : MonoBehaviour
         isMeleeAttacking = true;
 
         currentAnimator?.Play("KnifeAttack", 0, 0f);
+
+        if(CurrentWeapon().meleeSwingSound != null)
+        {
+            audioSource.PlayOneShot(CurrentWeapon().meleeSwingSound);
+        }
+        else
+        {
+            Debug.LogWarning("meleeSwingSound is not assigned");
+        }
+
         yield return new WaitForSeconds(CurrentWeapon().meleeDelay);
         
 
@@ -188,6 +228,24 @@ public class WeaponManager : MonoBehaviour
             if(hit.collider.TryGetComponent(out EnemyLogic enemy))
             {
                 enemy.TakeDamage(CurrentWeapon().damage);
+
+                if (CurrentWeapon().bloodEffect != null)
+                {
+                    Instantiate(CurrentWeapon().bloodEffect, hit.point, Quaternion.LookRotation(hit.normal));
+                }
+
+                if (CurrentWeapon().meleeHitSound != null)
+                {
+                    audioSource.PlayOneShot(CurrentWeapon().meleeHitSound);
+                }
+            }
+            else
+            {
+                if (defaultImpactEffect != null)
+                {
+                    GameObject impact = Instantiate(defaultImpactEffect, hit.point, Quaternion.LookRotation(hit.normal));
+                    Destroy(impact, 2f);
+                }
             }
         }
 
